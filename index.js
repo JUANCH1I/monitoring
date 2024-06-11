@@ -31,7 +31,7 @@ const config = {
     ]
   }
 };
-}
+
 
 const nms = new NodeMediaServer(config)
 nms.run()
