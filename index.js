@@ -27,12 +27,12 @@ app.use(cors())
 const totens = [
   {
     id: 1,
-    videoUrl: 'http://localhost:8000/live/raspberry1/index.m3u8',
+    videoUrl: 'https://monitoring-upy8.onrender.com/live/raspberry1/index.m3u8',
     controlUrl: 'http://toten1/control',
   },
   {
     id: 2,
-    videoUrl: 'http://localhost:8000/live/raspberry2/index.m3u8',
+    videoUrl: 'https://monitoring-upy8.onrender.com/live/raspberry2/index.m3u8',
     controlUrl: 'http://toten2/control',
   },
   // Agregar más tótems según sea necesario
