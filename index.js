@@ -1,10 +1,15 @@
 const express = require('express')
 const app = express()
-const port = process.env.PORT || 3000;
+const port = 5000
 const NodeMediaServer = require('node-media-server')
 const cors = require('cors')
-const path = require('path');
+const path = require('node:path')
+const ffmpeg = require('fluent-ffmpeg')
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path
 
+ffmpeg.setFfmpegPath(ffmpegPath)
+
+console.log('ffmpeg found at:', ffmpegPath)
 
 const config = {
   rtmp: {
@@ -12,30 +17,28 @@ const config = {
     chunk_size: 60000,
     gop_cache: true,
     ping: 30,
-    ping_timeout: 60
+    ping_timeout: 60,
   },
   http: {
     port: 8000,
-    mediaroot: path.resolve(__dirname, 'media'), // Ruta válida para mediaRoot
-    allow_origin: '*'
+    mediaroot: path.resolve(__dirname, 'media'), // Asegúrate de que este directorio existe y tiene permisos de escritura
+    allow_origin: '*',
   },
   trans: {
-    ffmpeg: '/usr/bin/ffmpeg', // Asegúrate de que la ruta a ffmpeg sea correcta
+    ffmpeg: ffmpegPath, // Usar la ruta verificada de ffmpeg
     tasks: [
       {
         app: 'live',
-        vc: "copy",
-        ac: "copy",
+        vc: 'copy',
+        ac: 'copy',
         hls: true,
         hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
         dash: true,
-        dashFlags: '[f=dash:window_size=3:extra_window_size=5]'
-      }
-    ]
-  }
-};
-
-
+        dashFlags: '[f=dash:window_size=3:extra_window_size=5]',
+      },
+    ],
+  },
+}
 const nms = new NodeMediaServer(config)
 nms.run()
 
