@@ -1,6 +1,6 @@
 const express = require('express')
 const app = express()
-const port = 5000
+const port = process.env.PORT || 3000;
 const NodeMediaServer = require('node-media-server')
 const cors = require('cors')
 
@@ -10,13 +10,14 @@ const config = {
     chunk_size: 60000,
     gop_cache: true,
     ping: 30,
-    ping_timeout: 60,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
-    allow_origin: '*',
+    mediaroot: path.resolve(__dirname, 'media'), // Ruta válida para mediaRoot
+    allow_origin: '*'
   },
-    trans: {
+  trans: {
     ffmpeg: '/usr/bin/ffmpeg', // Asegúrate de que la ruta a ffmpeg sea correcta
     tasks: [
       {
