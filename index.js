@@ -16,6 +16,21 @@ const config = {
     port: 8000,
     allow_origin: '*',
   },
+    trans: {
+    ffmpeg: '/usr/bin/ffmpeg', // Asegúrate de que la ruta a ffmpeg sea correcta
+    tasks: [
+      {
+        app: 'live',
+        vc: "copy",
+        ac: "copy",
+        hls: true,
+        hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
+        dash: true,
+        dashFlags: '[f=dash:window_size=3:extra_window_size=5]'
+      }
+    ]
+  }
+};
 }
 
 const nms = new NodeMediaServer(config)
