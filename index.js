@@ -3,6 +3,8 @@ const app = express()
 const port = process.env.PORT || 3000;
 const NodeMediaServer = require('node-media-server')
 const cors = require('cors')
+const path = require('path');
+
 
 const config = {
   rtmp: {
