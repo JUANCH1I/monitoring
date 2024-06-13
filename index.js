@@ -1,80 +1,67 @@
 const express = require('express')
+const http = require('http')
+const socketIo = require('socket.io')
+const wrtc = require('wrtc')
+
 const app = express()
-const port = 5000
-const NodeMediaServer = require('node-media-server')
-const cors = require('cors')
-const path = require('node:path')
-const ffmpeg = require('fluent-ffmpeg')
-const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path
+const server = http.createServer(app)
+const io = socketIo(server)
 
-ffmpeg.setFfmpegPath(ffmpegPath)
+let peers = {}
 
-console.log('ffmpeg found at:', ffmpegPath)
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id)
+  peers[socket.id] = { socket }
 
-const config = {
-  rtmp: {
-    port: 1935,
-    chunk_size: 60000,
-    gop_cache: true,
-    ping: 30,
-    ping_timeout: 60,
-  },
-  http: {
-    port: 8000,
-    mediaroot: path.resolve(__dirname, 'media'), // Asegúrate de que este directorio existe y tiene permisos de escritura
-    allow_origin: '*',
-  },
-  trans: {
-    ffmpeg: ffmpegPath, // Usar la ruta verificada de ffmpeg
-    tasks: [
-      {
-        app: 'live',
-        vc: 'copy',
-        ac: 'copy',
-        hls: true,
-        hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
-        dash: true,
-        dashFlags: '[f=dash:window_size=3:extra_window_size=5]',
-      },
-    ],
-  },
-}
-const nms = new NodeMediaServer(config)
-nms.run()
+  socket.on('offer', async (data) => {
+    const { sdp, to } = data
+    console.log('Received offer from:', socket.id)
 
-app.use(express.json())
-app.use(cors())
+    if (peers[to]) {
+      const peer = new wrtc.RTCPeerConnection()
+      peers[socket.id].peer = peer
+      peers[socket.id].senderStream = new wrtc.MediaStream()
 
-const totens = [
-  {
-    id: 1,
-    videoUrl: 'https://monitoring-upy8.onrender.com/live/raspberry1/index.m3u8',
-    controlUrl: 'http://toten1/control',
-  },
-  {
-    id: 2,
-    videoUrl: 'https://monitoring-upy8.onrender.com/live/raspberry2/index.m3u8',
-    controlUrl: 'http://toten2/control',
-  },
-  // Agregar más tótems según sea necesario
-]
+      peer.ontrack = (event) => {
+        peers[socket.id].senderStream.addTrack(event.track)
+      }
 
-app.get('/api/totens', (req, res) => {
-  res.json(totens)
+      await peer.setRemoteDescription(new wrtc.RTCSessionDescription(sdp))
+      const answer = await peer.createAnswer()
+      await peer.setLocalDescription(answer)
+      socket.emit('answer', { sdp: peer.localDescription, from: socket.id })
+
+      peer.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('candidate', { candidate: event.candidate, to })
+        }
+      }
+    }
+  })
+
+  socket.on('answer', async (data) => {
+    const { sdp, to } = data
+    if (peers[to] && peers[to].peer) {
+      await peers[to].peer.setRemoteDescription(
+        new wrtc.RTCSessionDescription(sdp)
+      )
+    }
+  })
+
+  socket.on('candidate', async (data) => {
+    const { candidate, to } = data
+    if (peers[to] && peers[to].peer) {
+      await peers[to].peer.addIceCandidate(new wrtc.RTCIceCandidate(candidate))
+    }
+  })
+
+  socket.on('disconnect', () => {
+    console.log('A user disconnected:', socket.id)
+    delete peers[socket.id]
+  })
 })
 
-app.post('/api/totens/:id/control', (req, res) => {
-  const { id } = req.params
-  const { device } = req.body
-  const toten = totens.find((t) => t.id == id)
-  if (toten) {
-    // Aquí se realizarían las acciones necesarias para controlar los dispositivos
-    res.status(200).send(`Dispositivo ${device} controlado en Tótem ${id}`)
-  } else {
-    res.status(404).send('Tótem no encontrado')
-  }
-})
-
-app.listen(port, () => {
-  console.log(`Servidor de API corriendo en http://localhost:${port}`)
+const PORT = process.env.PORT || 4000 // Cambia el puerto aquí
+server.listen(PORT, () => {
+  console.log(`Servidor en http://localhost:${PORT}`)
 })
